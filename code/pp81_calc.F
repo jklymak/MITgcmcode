@@ -247,7 +247,7 @@ C Now do the v-component
                      ELSE
 C                       This face is on the seafloor.  set epsilon=the
 C                       previous and dz = half the face.
-                        dz=+0.5*(drF(Km1)*hfacS(I-1,J-di,Km1 ,bi,bj))
+                        dz=+0.5*(drF(Km1)*hfacS(I-1,J+di,Km1 ,bi,bj))
                         es = es+epss(di)*dz
                         zsums = zsums+dz
                      ENDIF
