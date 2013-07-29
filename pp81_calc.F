@@ -21,8 +21,7 @@ C     \==========================================================/
 C
 C--------------------------------------------------------------------
 
-C Maarten Buijsman, GFDL, 2011-1-31; modified version of Jody Klymak's pp81 code
-C 
+C JMK
 C global parameters updated by pp_calc
 C     PPviscAz   - PP eddy viscosity coefficient              (m^2/s)
 C     PPdiffKzT  - PP diffusion coefficient for temperature   (m^2/s)
@@ -61,11 +60,11 @@ c Local constants
 C     imin, imax, jmin, jmax  - array computation indices
 C     RiNumber                - Richardson Number
       INTEGER I, J, K, Km1, JJ
-      INTEGER   iMin ,iMax ,jMin ,jMax
+      INTEGER   iMin ,iMax ,jMin ,jMax,di
       _RL     denom, PPviscTmp, buoyFreq,rhot,tempu,tempv,oldK,Ri
-      _RL     b0, buoyFreqf, buoyFreqc, PPviscold
+      _RL     b0, buoyFreqf, buoyFreqc, PPviscold,zsum,zsums
       _RL     rhoS(1:Nr),RS(1:Nr)
-      _RL     dzc,dzp,ec,ep
+      _RL     dzc,dzp,ec,ep,es,epss(-1:0),epsw(-1:0),dz
 !      _RL     bF(1:Nr)
 !      _RL     theta_mcb(1:Nr),theta_mcb3(1:Nr)
 C     === Local variables ===
@@ -123,7 +122,7 @@ C sorted depth and N is the brunt-vaisala frequency of the sorted profile.
             rhoS(1)=rhot
             RS(1)=rC(1)
             
-            PPeps(I,J,1,bi,bj)=0.0
+            PPeps(I-1,J-1,1,bi,bj)=0.0
 C           eps(k-1) = (dz(k-1)*eps0(k-1) +dz(k)*eps0(k))/(dz(k-1)+dz(k)) 
             ep = 0.0
             dzp = 0.0
@@ -165,6 +164,10 @@ C N at surface = zero or uses gradient
             b0 = MAX(-gravity*mass2rUnit*
      &              (rhoS(1) - rhoS(2))*recip_drC(2),0. _d 0)
 C            b0 = 0.
+            DO di=-1,0
+               epss(di)=0.0
+               epsw(di)=0.0
+            ENDDO
 
             DO K=1,Nr
                IF (K.LT.Nr) THEN
@@ -181,9 +184,11 @@ C                  buoyFreqf = 0.
 
 C viscosity at cell center at K
                PPviscTmp = MAX( viscArNr(K), 0.2*(RS(K)-rC(K))*
-     &                        (RS(K)-rC(K))*sqrt(buoyFreqc) ) 
+     &                        (RS(K)-rC(K))*sqrt(buoyFreqc)) 
 
                IF (K.GT.1) THEN
+                  Km1=K-1
+
 C viscosity at cell face above center at K
                   PPviscAr(I,J,K,bi,bj) = MAX(0.5*(PPviscTmp+PPviscold),
      &                 viscArNr(K)) 
@@ -195,51 +200,98 @@ C explicit viscosity is C used (e.g. for nonhydrostatic case) SAL
                   PPdiffKr(I,J,K,bi,bj) = MAX( PPviscAr(I,J,K,bi,bj),
      &                                      diffKrNrT(K) )
 
-C for computation of eps and add some richardson number mixing
-                  Km1=K-1
-C Smoothing shear???
-                  tempu = (uVel(I,J,Km1,bi,bj)-uVel(I,J,K,bi,bj))
-     $                 *recip_drC(K)
-                  tempv = (vVel(I,J,Km1,bi,bj)-vVel(I,J,K,bi,bj))
-     $                 *recip_drC(K)
-C                  tempu=.5*(uVel(I,J,Km1,bi,bj)+uVel(I+1,J,Km1,bi,bj)-
-C     &                     (uVel(I,J,K  ,bi,bj)+uVel(I+1,J,K  ,bi ,bj)))
-C     &              *recip_drC(K)
-C                  tempv=.5*(vVel(I,J,Km1,bi,bj)+vVel(I,J+1,Km1,bi,bj)-
-C     &                    (vVel(I,J,K,bi,bj)+vVel(I,J+1,K,bi ,bj)))
-C     &              *recip_drC(K)
-C         Get epsilon....  This is defined at the center of cells.  End
-C effects are to just continue the closest dissipation to the boundary.  
-C i.e. eps(1) = eps0(1) = (dudz(1))^2*Kv(1)
-C i.e. eps(2) = (dz(1)*eps0(1)+dz(2)*eps0(2))/(dz(1)+dz(2))
-C i.e. eps(3) = (dz(2)*eps0(2)+dz(3)*eps0(3))/(dz(2)+dz(3))
-C i.e. eps(Nr) = eps0(Nr)
-                  ec =(tempu*tempu+tempv*tempv) *PPviscAr(I,J,K,bi,bj)
-                  dzc = drC(K)*hFacC(i,j,K,bi,bj)
-                  IF ((dzp+dzc).GT.0) THEN
-                     PPeps(I,J,Km1,bi,bj) = 1.*(ec*dzc + ep*dzp)/(dzp
-     $                    +dzc)
-                  ELSE
-                     PPeps(I,J,Km1,bi,bj)=0.0
+C Compute Epsilon for diagnostics:
+C 
+C need to caclulate Im1 and Jm1 epsilon unfortunately...  Here at
+C i-1,j-1 we average the west nu(du/dz)^2 at i-1 and i, and the south
+C nu(dv/dv)^2 at j-1 and j, and then add them
+C
+C dz is calculated from the face distances, with the cells assumed to be
+C half way.  Note the use of hfacW and hfacS to make these correct near
+C bathy.  
+                  zsum=0.
+                  ec=0.0
+                  zsums=0.
+                  es=0.
+                  DO di=-1,0
+                     IF (hfacW(I+di,J-1,K,bi,bj).GT.0.000001) THEN
+                        dz = 0.5*(drF(K)*hfacW(I+di,J-1,K,bi,bj)
+     $                       +drF(Km1)*hfacW(I+di,J-1,Km1,bi,bj))
+                        IF (dz.GT.0.00001) THEN
+                           tempu = (uVel(I+di,J-1,Km1,bi,bj)-uVel(I+di,J
+     $                          -1,K,bi,bj))/dz
+                           epsw(di)=tempu*tempu*PPviscAr(I+di,J-1,K,bi
+     $                          ,bj)
+                           ec=ec+epsw(di)*dz
+                           zsum = zsum+dz
+                        ENDIF
+                     ELSE 
+C                       This face is on the seafloor.  set epsilon=the
+C                       previous and dz = half the face.
+                        dz=0.5*(drF(Km1)*hfacW(I+di,J-1,Km1,bi ,bj))
+                        ec=ec+epsw(di)*dz
+                        zsum = zsum+dz
+                     ENDIF
+C Now do the v-component                  
+                     IF (hfacS(I-1,J+di,K,bi,bj).GT.0.000001) THEN
+                        dz = 0.5*(drF(K)*hfacS(I-1,J+di,K,bi,bj)
+     $                       +drF(Km1)*hfacS(I-1,J+di,Km1,bi,bj))
+                        IF (dz.GT.0.00001) THEN
+                           tempu = (vVel(I-1,J+di,Km1,bi,bj)-vVel(I-1,J
+     $                          +di,K,bi,bj))/dz
+                           epss(di)=tempu*tempu*PPviscAr(I-1,J+di,K,bi
+     $                          ,bj)
+                           es = es+epss(di)*dz
+                           zsums = zsums+dz
+                        ENDIF
+                     ELSE
+C                       This face is on the seafloor.  set epsilon=the
+C                       previous and dz = half the face.
+                        dz=+0.5*(drF(Km1)*hfacS(I-1,J-di,Km1 ,bi,bj))
+                        es = es+epss(di)*dz
+                        zsums = zsums+dz
+                     ENDIF
+                  ENDDO
+C                 take the average of the du/dz terms
+                  IF (zsum.GT.0.00001) THEN
+                     ec=ec/zsum
+                  ENDIF
+C                 take the average of the dv/dz terms
+                  IF (zsums.GT.0.00001) THEN
+                     es=es/zsums
+                  ENDIF
+C add the u and v dissipations:
+                  ec=es+ec
+
+C Note this ec is defined on cell faces K=2..NR at the center of the
+C cells (i.e. at XC), so its above the density variables.
+C
+C So to get at the center of the cells, just average this one and the previous one.  And its a true average because the 
+
+                  PPeps(I-1,J-1,Km1,bi,bj) = 0.5*(ep+ec)
+                  IF (Km1.EQ.1) THEN
+                     PPeps(I-1,J-1,Km1,bi,bj) = ec
                   ENDIF
                   ep=ec
-                  dzp=dzc
-               ENDIF 
-               PPeps(I,J,Nr,bi,bj)=ep
-C  Note epsilon is defined 
-C$$$               IF (PPviscTmp.GT.0.) THEN
-C$$$                  WRITE(msgBuf, '(A,E10.4,A,E10.4)')  'JMK Visc: ',
-C$$$     $                 PPviscTmp,' ',buoyFreq
-C$$$                  CALL PRINT_MESSAGE(msgBuf, standardMessageUnit,
-C$$$     $                 SQUEEZE_RIGHT , 1)
-C$$$               ENDIF
+               ENDIF
+c$$$               WRITE(msgBuf, '(A,I10.10,A,E10.4,A,E10.4)') 'Hellok ', K
+c$$$     $              -1,' ',theta(I,J,K,bi,bj),' ',PPeps(I-1,J-1,Km1,bi
+c$$$     $              ,bj)
+c$$$               CALL PRINT_MESSAGE(msgBuf, standardMessageUnit,
+c$$$     &              SQUEEZE_RIGHT , 1)
+
 
                b0        = buoyFreqf ! at previous cell face
                PPviscold = PPviscTmp ! at previous cell center
             ENDDO
+C           ENDDO K
+C     set on K=Nr
+            PPeps(I-1,J-1,Nr,bi,bj) =ep
 
          ENDDO
+C           ENDDO J
       ENDDO
+C           ENDDO I
 
 #endif /* ALLOW_PP81 */
 
