@@ -557,13 +557,13 @@ C BT
       CALL DIAGNOSTICS_FILL(uPbt,'SDIAG2  ',0,1,0,1,1,myThid)
       CALL DIAGNOSTICS_FILL(vPbt,'SDIAG3  ',0,1,0,1,1,myThid)
       CALL DIAGNOSTICS_FILL(uEbt,'SDIAG4  ',0,1,0,1,1,myThid)
-      CALL DIAGNOSTICS_FILL(vEbt,'SDIAG5  ',0,1,0,1,1,myThid)
+C      CALL DIAGNOSTICS_FILL(vEbt,'SDIAG5  ',0,1,0,1,1,myThid)
 C BC
-      CALL DIAGNOSTICS_FILL(Ebc, 'SDIAG6  ',0,1,0,1,1,myThid)
-      CALL DIAGNOSTICS_FILL(uPbc,'SDIAG7  ',0,1,0,1,1,myThid)
-      CALL DIAGNOSTICS_FILL(vPbc,'SDIAG8  ',0,1,0,1,1,myThid)
-      CALL DIAGNOSTICS_FILL(uEbc,'SDIAG9  ',0,1,0,1,1,myThid)
-C      CALL DIAGNOSTICS_FILL(vEbc,'SDIAG10 ',0,1,0,1,1,myThid)
+      CALL DIAGNOSTICS_FILL(Ebc, 'SDIAG5  ',0,1,0,1,1,myThid)
+      CALL DIAGNOSTICS_FILL(uPbc,'SDIAG6  ',0,1,0,1,1,myThid)
+      CALL DIAGNOSTICS_FILL(vPbc,'SDIAG7  ',0,1,0,1,1,myThid)
+      CALL DIAGNOSTICS_FILL(uEbc,'SDIAG8  ',0,1,0,1,1,myThid)
+      CALL DIAGNOSTICS_FILL(vEbc,'SDIAG9 ',0,1,0,1,1,myThid)
 C Conversion
       CALL DIAGNOSTICS_FILL(Conv,'SDIAG10 ',0,1,0,1,1,myThid)
 C set up in data.diagnostics:

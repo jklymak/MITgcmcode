@@ -18,17 +18,17 @@ filename(3)='uEbt',
 #
 frequency(4) = -1240,
 timephase(4)=0.,
-fields(1,4)='SDIAG6',
+fields(1,4)='SDIAG5',
 filename(4)='Ebc',
 #
 frequency(5) = 1240,
 timephase(5)=0.,
-fields(1,5)='SDIAG7',
+fields(1,5)='SDIAG6',
 filename(5)='uPbc',
 #
 frequency(6) = 1240,
 timephase(6)=0.,
-fields(1,6)='SDIAG9',
+fields(1,6)='SDIAG8',
 filename(6)='uEbc',
 #
 frequency(7) = 1240,
