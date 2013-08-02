@@ -154,9 +154,13 @@ C done barotropic loop.  Now do baroclinic loop:
      I              salt(1-OLx,1-OLy,K,bi,bj),
      O              rhoC,
      I              K,bi,bj,myThid )
-C               CALL FIND_RHO_SCALAR(theta(i,j,K,bi,bj), 
-C     &              salt(i,j,K,bi,bj),
-C     &              totPhiHyd(i,j,K,bi,bj),rhoC,myThid )
+C RHO_2D is      rhoLoc(i,j)=rhoNil*(
+C     &     sBeta*(sFld(i,j)-refSalt)
+C     &   -tAlpha*(tFld(i,j)-refTemp) )
+C     &        + dRho
+C           refTemp=tRef(kRef)
+C           refSalt=sRef(kRef)
+C           dRho = rhoNil-rhoConst
 
                DO j = 0,sNy+1    
                   DO i = 0,sNx+1
@@ -165,13 +169,13 @@ C W1 and W2 needed for next loop.  Eq 5.42
                         W1(i,j,bi,bj) = (ZW(i+1,j,bi,bj)*U0W(i+1,j,bi
      $                       ,bj)-ZW(i,j,bi,bj)*U0W(i,j,bi ,bj))
      $                       *recip_dxF(i,j,bi,bj)
-C                        W1(i,j,bi,bj) = W1(i,j,bi,bj)+ (ZS(i,j+1,bi,bj)
-C     $                       *V0S(i,j+1,bi,bj)- ZS(i,j,bi,bj)*V0S(i,j,bi
-C     $                       ,bj))*recip_dyF(i,j,bi,bj)
+                        W1(i,j,bi,bj) = W1(i,j,bi,bj)+ (ZS(i,j+1,bi,bj)
+     $                       *V0S(i,j+1,bi,bj)- ZS(i,j,bi,bj)*V0S(i,j,bi
+     $                       ,bj))*recip_dyF(i,j,bi,bj)
                         W2(i,j,bi,bj) = (U0W(i+1,j,bi
      $                       ,bj)- U0W(i,j,bi,bj))*recip_dxF(i,j,bi,bj)
-C                        W2(i,j,bi,bj) = W2(i,j,bi,bj)+ (V0S(i,j+1,bi,bj)
-C     $                       - V0S(i,j,bi,bj))*recip_dyF(i,j,bi,bj)
+                        W2(i,j,bi,bj) = W2(i,j,bi,bj)+ (V0S(i,j+1,bi,bj)
+     $                       - V0S(i,j,bi,bj))*recip_dyF(i,j,bi,bj)
                      ENDIF
 C just in case:
                      rhoC(i,j)=rhoC(i,j)-rhoNil+rhoConst
