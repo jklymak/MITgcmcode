@@ -117,7 +117,7 @@ C     faces
                     IF (nonHydroStatic) THEN
                       PS = PS+0.5*(phi_nh(i,j,K,bi,bj)+phi_nh(i,j-1,K
      $                   ,bi,bj)) 
-                      PW = PS+0.5*(phi_nh(i-1,j,K,bi,bj)+phi_nh(i,j,K
+                      PW = PW+0.5*(phi_nh(i-1,j,K,bi,bj)+phi_nh(i,j,K
      $                     ,bi,bj))
                     ENDIF
 C     Depth mean pressure
@@ -385,7 +385,7 @@ C Pressure U*P.
                     IF (nonHydroStatic) THEN
                       PS = PS+0.5*(phi_nh(i,j,K,bi,bj)+phi_nh(i,j-1,K
      $                   ,bi,bj)) 
-                      PW = PS+0.5*(phi_nh(i-1,j,K,bi,bj)+phi_nh(i,j,K
+                      PW = PW+0.5*(phi_nh(i-1,j,K,bi,bj)+phi_nh(i,j,K
      $                     ,bi,bj))
                     ENDIF
 C               Baroclinic flux:
