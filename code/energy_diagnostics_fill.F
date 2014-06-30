@@ -136,10 +136,20 @@ C     Depth mean velocities
      $                    hFacS(i,j,K,bi,bj)
                      IF (K.EQ.NR) THEN
 C Get the means!
-                        P0W(i,j,bi,bj)=P0W(i,j,bi,bj)/ZW(i,j,bi,bj)
-                        P0S(i,j,bi,bj)=P0S(i,j,bi,bj)/ZS(i,j,bi,bj)
-                        U0W(i,j,bi,bj)=U0W(i,j,bi,bj)/ZW(i,j,bi,bj)
-                        V0S(i,j,bi,bj)=V0S(i,j,bi,bj)/ZS(i,j,bi,bj)
+                        IF (ZS(i,j,bi,bj).GT.0.) THEN
+                           P0S(i,j,bi,bj)=P0S(i,j,bi,bj)/ZS(i,j,bi,bj)
+                           V0S(i,j,bi,bj)=V0S(i,j,bi,bj)/ZS(i,j,bi,bj)
+                        ELSE
+                           P0S(i,j,bi,bj)=0.
+                           V0S(i,j,bi,bj)=0.
+                        ENDIF
+                        IF (ZW(i,j,bi,bj).GT.0.) THEN
+                           P0W(i,j,bi,bj)=P0W(i,j,bi,bj)/ZW(i,j,bi,bj)
+                           U0W(i,j,bi,bj)=U0W(i,j,bi,bj)/ZW(i,j,bi,bj)
+                         ELSE
+                           P0W(i,j,bi,bj)=0.
+                           U0W(i,j,bi,bj)=0.
+                         ENDIF
                      ENDIF
 C               Enddo: i,j,k
                   ENDDO
@@ -149,7 +159,7 @@ C done barotropic loop.  Now do baroclinic loop:
 
             DO K=1,Nr
                CALL FIND_RHO_2D(
-     I              1, sNx, 1, sNy, K,
+     I              0, sNx+1, 0, sNy+1, K,
      I              theta(1-OLx,1-OLy,K,bi,bj), 
      I              salt(1-OLx,1-OLy,K,bi,bj),
      O              rhoC,
@@ -339,6 +349,7 @@ C V0E
                       V0E = V0E/ddz
                     ENDIF
 C V0N
+C Previous
                     V0N=V0S(i,j+1,bi,bj)
 C primed quantities:
                     upW = uW-U0W(i,j,bi,bj)
@@ -388,6 +399,8 @@ C Pressure U*P.
                       PW = PW+0.5*(phi_nh(i-1,j,K,bi,bj)+phi_nh(i,j,K
      $                     ,bi,bj))
                     ENDIF
+C PREVIOUS
+
 C               Baroclinic flux:
                     uPbc(i,j,bi,bj)=uPbc(i,j,bi,bj)+(PW-P0W(i,j,bi,bj))
      $                   *(upW)*DRf(K)*hFacW(i,j,K,bi,bj)
@@ -420,6 +433,7 @@ C KEp and APEp sums:
 C Conversion (5.102)
                     Conv(i,j,bi,bj)=Conv(i,j,bi,bj)+rhoC(i,j)*gravity*W
      $                   *DRf(K)*hFacC(i,j,K,bi,bj)/rhoNil
+C PREV
 
                     IF ((i.eq.100).AND.(j.eq.1)) THEN
                        WRITE(msgBuf,
@@ -428,6 +442,7 @@ C Conversion (5.102)
      $                      N2: ' ,N2(K),' Ke: ',kEpC
 C                       CALL PRINT_MESSAGE(msgBuf, standardMessageUnit,
 C     $                      SQUEEZE_RIGHT , 1)
+C                       CALL FLUSH(standardMessageUnit)
                        WRITE(msgBuf,
      $                      '(A,I2,A,E10.3,A,E10.4,A,E10.4,A,E10.4)')
      $                      'Helloj ',j,' vC: ',vC,' hkEpW: ',hkEpW,'
@@ -480,6 +495,7 @@ C centered difference.
                       Conv(i,j,bi,bj)=Conv(i,j,bi,bj)-dqdz*W *DRf(K)
      $                     *hFacC(i,j,K,bi,bj)
                     ENDIF
+C                   /nonhydro
 C Aho: This is a barotropic term, but we need to average them now.
 C  5.79, 5.80, 5.86  
                     upupW(i,j,bi,bj)= upupW(i,j,bi,bj)+upW*upW*DRf(k)
@@ -491,14 +507,19 @@ C  5.79, 5.80, 5.86
                     vpvpS(i,j,bi,bj)=vpvpS(i,j,bi,bj)+vpS*vpS*DRf(k)
      $                   *hFacS(i,j,K,bi,bj)
 C This is the barotropic:
+C PRev
+
                     uPbt(i,j,bi,bj)=uPbt(i,j,bi,bj)+P0W(i,j,bi,bj)*uW
      $                   *DRf(K)*hFacW(i,j,K,bi,bj)
 C There should be a mean q (non hydrostatic) term as well.  
                     vPbt(i,j,bi,bj)=vPbt(i,j,bi,bj)+P0S(i,j,bi,bj)*vS
      $                   *DRf(K)*hFacS(i,j,K,bi,bj)
-                 ENDDO 
+                 ENDDO
+C                i 
               ENDDO
-           ENDDO
+C             j
+           ENDDO 
+C          k
 C Need to add to the conversion term the Ah0 term ( 5.86, 5.79, and 5.80)
            DO j = 1,sNy    
               DO i = 1,sNx
@@ -540,16 +561,21 @@ C Do the barotroic terms here too...
      $                *rlowW(i,j,bi,bj)
                  uEbt(i,j,bi,bj) = U0W(i,j,bi,bj)*EkW
                  vEbt(i,j,bi,bj) = V0S(i,j,bi,bj)*EkS
-                 IF ((i.eq.100).AND.(j.eq.1)) THEN
-C                    WRITE(msgBuf,
-C     $                   '(A,I2,A,E10.3,A,E10.4,A,E10.4,A,E10.4)') 'i ',
-C     $                   i,'Ebt: ',Ebt(i,j,bi,bj),' U0W: ',U0W(i,j,bi
-C     $                   ,bj),' R_low: ' ,R_low(i,j,bi,bj),' EkW: ',EkW
-C                    CALL PRINT_MESSAGE(msgBuf, standardMessageUnit,
-C     $                   SQUEEZE_RIGHT , 1)
+ 
+                 IF (debuglevel.GT.2) THEN
+                    IF ((i.eq.100).AND.(j.eq.1)) THEN
+                       WRITE(msgBuf,
+     $                   '(A,I2,A,E10.3,A,E10.4,A,E10.4,A,E10.4)') 'i ',
+     $                   i,'Ebt: ',Ebt(i,j,bi,bj),' U0W: ',U0W(i,j,bi
+     $                   ,bj),' R_low: ' ,R_low(i,j,bi,bj),' EkW: ',EkW
+                       CALL PRINT_MESSAGE(msgBuf, standardMessageUnit,
+     $                      SQUEEZE_RIGHT , 1)
+                    ENDIF
                  ENDIF
               ENDDO
+           
            ENDDO
+
         ENDDO
       ENDDO
 C BT
