@@ -1,6 +1,8 @@
 Energy Diagnostics
 ------------------
 
+WARNING: There appear to be some issues with `FIND_RHO` in here that need to be worked on for modern MITgcm versions.
+
 Need:
 
 * `energy_diagnostics_fill.F`
@@ -10,7 +12,9 @@ in your `code` directory
 
 You also need to add a `data.diagnostics` file like the example here. And `packages.conf` should have `diagnostics` turned on.
 
-## Dissipation due to overturns
+## Dissipation due to overturns 
+
+WARNING: for "newer" MITgcm versions, just use `pkg/kl10`
 
 This is based off Klymak and Legg 2010, Ocean Modelling.
 
